@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Nexta — Baca Satu Kalimat</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;1,400;1,500&family=Instrument+Sans:wght@300;400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #faf8f6; --white: #ffffff; --text: #1a1715; --text-mid: #6b6360;
+  --text-light: #b0aba8; --border: #e8e3de; --accent: #e86c3a;
+  --accent-soft: #f5c4ae; --pill-bg: #f0ebe6;
+  --g1: #f8c5a0; --g2: #f4a8c0; --g3: #c4b0e8; --g4: #a8c8f0; --g5: #f0d4a8;
+}
+body.dark-mode {
+  --bg: #141210; --white: #1e1b19; --text: #f0ebe6; --text-mid: #a39c98;
+  --text-light: #7a736f; --border: #332d29; --accent: #e86c3a;
+  --accent-soft: #7a3e26; --pill-bg: #24201d;
+  --g1: #5c3c26; --g2: #5c2d3a; --g3: #3b324d; --g4: #2d3b4d; --g5: #4d402d;
+}
+
+html, body { height: 100%; font-family: 'Instrument Sans', sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; transition: background-color 0.4s ease, color 0.4s ease; }
+
+.theme-toggle-btn { position: fixed; top: 1.5rem; right: 1.5rem; z-index: 100; width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.4); backdrop-filter: blur(12px); border: 1px solid var(--border); color: var(--text); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+.theme-toggle-btn:hover { transform: scale(1.08); background: var(--pill-bg); }
+body.dark-mode .theme-toggle-btn { background: rgba(30,30,30,0.4); }
+
+.mesh-bg { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; opacity: 0.8; }
+.mesh-bg::before { content: ''; position: absolute; inset: -50%; background: radial-gradient(ellipse 60% 50% at 20% 20%, var(--g1) 0%, transparent 60%), radial-gradient(ellipse 50% 60% at 80% 10%, var(--g2) 0%, transparent 55%), radial-gradient(ellipse 55% 45% at 10% 80%, var(--g5) 0%, transparent 50%), radial-gradient(ellipse 45% 55% at 85% 85%, var(--g3) 0%, transparent 55%), radial-gradient(ellipse 40% 40% at 50% 50%, var(--g4) 0%, transparent 60%), var(--bg); animation: meshDrift 18s ease-in-out infinite alternate; transition: background 0.5s ease; }
+@keyframes meshDrift { 0% { transform: scale(1) translate(0%,0%); } 33% { transform: scale(1.04) translate(1%,-1.5%); } 66% { transform: scale(1.02) translate(-1.5%,1%); } 100% { transform: scale(1.05) translate(0.5%,1.5%); } }
+
+.card { position: relative; z-index: 1; background: rgba(255,255,255,0.82); backdrop-filter: blur(24px); border-radius: 32px; box-shadow: 0 8px 40px rgba(0,0,0,0.08); transition: background 0.4s, box-shadow 0.4s; }
+body.dark-mode .card { background: rgba(30,27,25,0.82); box-shadow: 0 8px 40px rgba(0,0,0,0.4); }
+
+#app { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1.5rem; position: relative; z-index: 1; }
+.screen { display: none; width: 100%; max-width: 480px; }
+.screen.active { display: flex; flex-direction: column; }
+
+/* Welcome */
+#welcome-screen { align-items: center; text-align: center; gap: 2.5rem; animation: fadeUp 0.6s ease; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+.logo-mark { display: flex; align-items: center; gap: 0.65rem; }
+.logo-svg { width: 36px; height: 36px; flex-shrink: 0; }
+.logo-wordmark { font-family: 'DM Sans', sans-serif; font-size: 1.2rem; font-style: normal; color: var(--text); font-weight: 500; letter-spacing: -0.02em; }
+.welcome-headline { font-family: 'Playfair Display', serif; font-size: clamp(2.4rem,8vw,3.2rem); font-weight: 400; line-height: 1.15; }
+.welcome-headline em { font-style: italic; color: var(--accent); }
+.welcome-sub { font-size: 0.9rem; color: var(--text-mid); line-height: 1.6; max-width: 320px; }
+
+.btn-pill { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.85rem 2rem; border-radius: 999px; border: none; cursor: pointer; font-family: 'Instrument Sans', sans-serif; font-size: 0.8rem; font-weight: 500; transition: 0.15s; white-space: nowrap; }
+.btn-pill:active { transform: scale(0.97); }
+.btn-primary { background: var(--text); color: var(--bg); box-shadow: 0 4px 16px rgba(0,0,0,0.15); }
+.btn-primary:hover { transform: translateY(-1px); }
+.btn-ghost { background: var(--pill-bg); color: var(--text); border: 1px solid var(--border); }
+.btn-ghost:hover { background: var(--border); }
+
+/* Upload */
+#upload-screen { gap: 1.2rem; animation: fadeUp 0.4s ease; }
+.upload-card { padding: 2.5rem 2rem; gap: 1.2rem; display: flex; flex-direction: column; align-items: center; text-align: center; }
+.upload-title { font-family: 'Playfair Display', serif; font-size: 1.5rem; font-weight: 400; }
+.drop-zone { width: 100%; border: 1.5px dashed var(--border); border-radius: 20px; padding: 2rem 1.5rem; display: flex; flex-direction: column; align-items: center; gap: 0.75rem; cursor: pointer; position: relative; background: rgba(250,248,246,0.6); transition: border-color 0.2s, background 0.2s; }
+.drop-zone:hover { border-color: var(--accent); }
+body.dark-mode .drop-zone { background: rgba(20,18,16,0.6); }
+.drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.drop-icon { width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, var(--g1), var(--g2)); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
+.drop-label { font-size: 0.82rem; color: var(--text-mid); }
+.drop-label strong { color: var(--text); font-weight: 500; }
+.file-tags { display: flex; gap: 0.4rem; justify-content: center; flex-wrap: wrap; }
+.file-tag { font-size: 0.65rem; padding: 0.2rem 0.7rem; border-radius: 999px; background: var(--pill-bg); color: var(--text-mid); border: 1px solid var(--border); }
+.file-loaded-name { font-size: 0.8rem; color: var(--accent); font-weight: 500; display: none; text-align: center; line-height: 1.5; padding: 0.5rem; background: var(--accent-soft); border-radius: 8px; width: 100%; }
+body.dark-mode .file-loaded-name { background: rgba(232,108,58,0.15); }
+.file-loaded-name.visible { display: block; }
+
+.divider-row { display: flex; align-items: center; gap: 0.8rem; width: 100%; color: var(--text-light); font-size: 0.72rem; }
+.divider-row::before, .divider-row::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+textarea { width: 100%; background: rgba(255,255,255,0.7); border: 1.5px solid var(--border); color: var(--text); font-family: 'Playfair Display', serif; font-size: 0.95rem; padding: 1rem 1.2rem; min-height: 100px; border-radius: 16px; outline: none; transition: border-color 0.2s; }
+textarea:focus { border-color: var(--accent); }
+body.dark-mode textarea { background: rgba(20,18,16,0.6); }
+
+.mode-row { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; border: 1.5px solid var(--border); border-radius: 14px; width: 100%; }
+.mode-label { font-size: 0.78rem; color: var(--text-mid); }
+select { background: var(--pill-bg); border: 1px solid var(--border); color: var(--text); padding: 0.3rem 0.7rem; border-radius: 999px; outline: none; font-family: 'Instrument Sans', sans-serif; font-size: 0.78rem; cursor: pointer; }
+
+/* Hidden by default, toggled by JS */
+.word-count-row { display: none; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; border: 1.5px solid var(--border); border-radius: 14px; width: 100%; }
+.word-count-row.visible { display: flex; }
+
+input[type=range] { -webkit-appearance: none; width: 120px; height: 4px; background: var(--border); border-radius: 999px; outline: none; cursor: pointer; }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; background: var(--accent); border-radius: 50%; cursor: pointer; box-shadow: 0 1px 4px rgba(232,108,58,0.35); }
+.range-val { font-size: 0.75rem; color: var(--accent); font-weight: 600; min-width: 44px; text-align: right; }
+.btn-row { display: flex; gap: 0.6rem; width: 100%; }
+.btn-row .btn-pill { flex: 1; }
+
+.loading-bar { display: none; width: 100%; height: 3px; background: var(--border); border-radius: 999px; overflow: hidden; }
+.loading-bar.active { display: block; }
+.loading-bar-fill { height: 100%; background: linear-gradient(90deg, var(--g1), var(--accent), var(--g2)); animation: shimmer 1.4s infinite; background-size: 200% 100%; }
+@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+.loading-label { display: none; font-size: 0.75rem; color: var(--text-mid); text-align: center; animation: pulse 1.6s infinite; }
+.loading-label.active { display: block; }
+@keyframes pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+
+/* Reader */
+#reader-screen { min-height: 100vh; width: 100%; max-width: 100%; flex-direction: column; align-items: stretch; gap: 0; }
+#reader-screen.active { display: flex; }
+.reader-progress { position: fixed; top: 0; left: 0; right: 0; height: 3px; background: rgba(0,0,0,0.06); z-index: 50; }
+body.dark-mode .reader-progress { background: rgba(255,255,255,0.06); }
+.reader-progress-fill { height: 100%; background: linear-gradient(90deg, var(--g1), var(--accent)); transition: width 0.4s ease; width: 0%; }
+
+.reader-topbar { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 50; display: flex; align-items: center; gap: 0.8rem; padding: 0.4rem 0.8rem; border-radius: 999px; background: rgba(255,255,255,0.85); backdrop-filter: blur(16px); border: 1px solid var(--border); box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+body.dark-mode .reader-topbar { background: rgba(30,27,25,0.85); }
+.btn-toc { background: transparent; border: none; color: var(--text); font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0.2rem; border-radius: 50%; transition: background 0.2s; }
+.btn-toc:hover { background: var(--pill-bg); }
+.topbar-logo { font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 600; color: var(--accent); letter-spacing: -0.01em; }
+.topbar-sep { color: var(--border); }
+.topbar-counter, .topbar-estimate { font-size: 0.72rem; color: var(--text-mid); }
+
+.reader-stage { flex: 1; min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0; position: relative; overflow: hidden; }
+
+/* ── LYRICS SCROLL (Spotify style) ── */
+.lyrics-scroll {
+  width: 100%;
+  height: 100vh;
+  overflow-y: auto;
+  scroll-behavior: smooth;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 45vh 1.5rem;
+  gap: 0;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.lyrics-scroll::-webkit-scrollbar { display: none; }
+
+.lyric-line {
+  width: 100%;
+  max-width: 640px;
+  text-align: center;
+  padding: 0.55rem 0.5rem;
+  cursor: pointer;
+  border-radius: 12px;
+  transition: all 0.35s ease;
+  user-select: none;
+}
+
+.lyric-line .lyric-text {
+  font-family: 'Playfair Display', serif;
+  font-weight: 400;
+  line-height: 1.5;
+  transition: color 0.35s ease, font-size 0.3s ease, opacity 0.35s ease;
+  color: var(--text-light);
+  font-size: clamp(1rem, 2.8vw, 1.4rem);
+  opacity: 0.45;
+}
+
+.lyric-line.active .lyric-text {
+  color: var(--text);
+  font-size: clamp(1.5rem, 4vw, 2.4rem);
+  opacity: 1;
+  font-weight: 500;
+}
+
+.lyric-line.near .lyric-text {
+  color: var(--text-mid);
+  font-size: clamp(1.1rem, 3vw, 1.65rem);
+  opacity: 0.7;
+}
+
+.lyric-line:hover .lyric-text {
+  opacity: 0.85;
+  color: var(--text-mid);
+}
+
+.lyric-line.active:hover .lyric-text {
+  opacity: 1;
+  color: var(--text);
+}
+
+/* Image chunk inside lyrics */
+.lyric-line.image-line { padding: 1rem 0; }
+.lyric-line.image-line img { max-width: min(90%, 500px); border-radius: 12px; opacity: 0.4; transition: opacity 0.35s; }
+.lyric-line.image-line.active img, .lyric-line.image-line.near img { opacity: 1; }
+
+/* Sans-serif font mode */
+body.font-sans .lyric-line .lyric-text,
+body.font-sans .translate-text { font-family: 'DM Sans', sans-serif; }
+body.font-sans textarea { font-family: 'DM Sans', sans-serif; }
+.chunk-image { display: none; max-width: min(90%,600px); max-height: 55vh; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.1); opacity: 0; transform: scale(0.95); transition: opacity 0.4s ease, transform 0.4s ease; object-fit: contain; }
+.chunk-image.visible { opacity: 1; transform: scale(1); }
+
+/* Translate Panel */
+.translate-panel { margin-top: 1.5rem; max-width: 600px; width: 90%; background: rgba(255,255,255,0.72); backdrop-filter: blur(12px); border: 1px solid var(--border); border-radius: 16px; padding: 1rem 1.2rem; opacity: 0; transform: translateY(8px); transition: opacity 0.3s ease, transform 0.3s ease; pointer-events: none; }
+body.dark-mode .translate-panel { background: rgba(30,27,25,0.72); }
+.translate-panel.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.translate-label { font-size: 0.63rem; color: var(--text-light); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 0.5rem; }
+.translate-label em { color: var(--accent); font-style: normal; }
+.translate-text { font-family: 'Playfair Display', serif; font-size: 1rem; color: var(--text-mid); line-height: 1.5; font-style: italic; }
+.translate-loading { font-size: 0.8rem; color: var(--text-light); animation: pulse 1.2s infinite; }
+
+/* Bottom Controls */
+.reader-bottom { position: fixed; bottom: 0; left: 0; right: 0; z-index: 50; display: flex; flex-direction: column; align-items: center; gap: 0.6rem; padding: 0.8rem 1.5rem 1.4rem; background: linear-gradient(to top, rgba(250,248,246,0.97) 60%, transparent); }
+body.dark-mode .reader-bottom { background: linear-gradient(to top, rgba(20,18,16,0.97) 60%, transparent); }
+.ctrl-row { display: flex; align-items: center; gap: 0.6rem; }
+.ctrl-icon-btn { width: 42px; height: 42px; border-radius: 50%; border: 1.5px solid var(--border); background: rgba(255,255,255,0.8); color: var(--text); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.15s; font-size: 0.85rem; }
+body.dark-mode .ctrl-icon-btn { background: rgba(30,27,25,0.8); }
+.ctrl-icon-btn:hover { transform: scale(1.06); border-color: var(--accent); }
+.ctrl-icon-btn.on { background: var(--accent-soft); border-color: var(--accent); }
+body.dark-mode .ctrl-icon-btn.on { background: rgba(232,108,58,0.2); }
+.ctrl-play-btn { width: 56px; height: 56px; border-radius: 50%; border: none; background: var(--text); color: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 1rem; cursor: pointer; transition: 0.15s; }
+.ctrl-play-btn:hover { transform: scale(1.05); }
+.btn-translate-ctrl { padding: 0.45rem 1.1rem; border-radius: 999px; border: 1.5px solid var(--border); background: rgba(255,255,255,0.8); color: var(--text); font-family: 'Instrument Sans', sans-serif; font-size: 0.73rem; cursor: pointer; transition: 0.15s; display: flex; align-items: center; gap: 0.4rem; }
+body.dark-mode .btn-translate-ctrl { background: rgba(30,27,25,0.8); }
+.btn-translate-ctrl:hover { border-color: var(--accent); }
+.btn-translate-ctrl.on { background: var(--accent-soft); border-color: var(--accent); }
+body.dark-mode .btn-translate-ctrl.on { background: rgba(232,108,58,0.2); }
+.speed-row { display: flex; align-items: center; gap: 0.6rem; font-size: 0.7rem; color: var(--text-light); }
+.speed-row input[type=range] { width: 100px; }
+
+/* TOC Sidebar */
+.toc-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 199; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; backdrop-filter: blur(4px); }
+.toc-overlay.active { opacity: 1; pointer-events: auto; }
+.toc-sidebar { position: fixed; top: 0; left: 0; width: 300px; height: 100%; background: var(--bg); z-index: 200; box-shadow: 4px 0 24px rgba(0,0,0,0.15); transition: transform 0.4s cubic-bezier(0.25,1,0.5,1); display: flex; flex-direction: column; transform: translateX(-100%); }
+.toc-sidebar.active { transform: translateX(0); }
+.toc-header { padding: 1.3rem 1.2rem 1rem; border-bottom: 1px solid var(--border); display: flex; align-items: flex-start; justify-content: space-between; }
+.toc-title { font-family: 'Playfair Display', serif; font-size: 1.1rem; }
+.toc-subtitle { font-size: 0.68rem; color: var(--text-light); margin-top: 0.2rem; }
+.btn-close-toc { background: none; border: none; font-size: 1.1rem; color: var(--text-mid); cursor: pointer; padding: 0.3rem; border-radius: 50%; transition: background 0.2s; flex-shrink: 0; margin-top: -0.2rem; }
+.btn-close-toc:hover { background: var(--pill-bg); }
+.toc-search-wrap { padding: 0.7rem 0.9rem; border-bottom: 1px solid var(--border); }
+.toc-search-wrap input { width: 100%; background: var(--pill-bg); border: 1px solid var(--border); color: var(--text); padding: 0.45rem 0.9rem; border-radius: 999px; outline: none; font-size: 0.8rem; font-family: 'Instrument Sans', sans-serif; transition: border-color 0.2s; }
+.toc-search-wrap input:focus { border-color: var(--accent); }
+.toc-list { flex: 1; overflow-y: auto; padding: 0.6rem; display: flex; flex-direction: column; gap: 0.2rem; }
+.toc-list::-webkit-scrollbar { width: 4px; }
+.toc-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+.toc-item { text-align: left; background: none; border: none; padding: 0.6rem 0.8rem; font-family: 'Instrument Sans', sans-serif; font-size: 0.81rem; color: var(--text); border-radius: 10px; cursor: pointer; transition: background 0.15s; width: 100%; display: flex; align-items: flex-start; gap: 0.6rem; }
+.toc-item:hover { background: var(--pill-bg); }
+.toc-item.active { background: var(--accent-soft); font-weight: 500; }
+body.dark-mode .toc-item.active { background: rgba(232,108,58,0.2); }
+.toc-num { font-size: 0.62rem; color: var(--text-light); min-width: 20px; padding-top: 0.15rem; flex-shrink: 0; }
+.toc-item-body { flex: 1; line-height: 1.35; }
+.toc-empty { text-align: center; color: var(--text-light); font-size: 0.78rem; padding: 2rem 1rem; line-height: 1.7; }
+.toc-footer { padding: 0.8rem 0.9rem; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 0.5rem; }
+.toc-footer label { font-size: 0.72rem; color: var(--text-mid); white-space: nowrap; }
+.toc-footer input { background: var(--pill-bg); border: 1px solid var(--border); color: var(--text); padding: 0.38rem 0.6rem; border-radius: 8px; outline: none; font-size: 0.8rem; width: 64px; text-align: center; font-family: 'Instrument Sans', sans-serif; }
+.toc-footer button { flex: 1; padding: 0.38rem 0.7rem; background: var(--accent); color: #fff; border: none; border-radius: 8px; font-size: 0.76rem; cursor: pointer; font-family: 'Instrument Sans', sans-serif; transition: opacity 0.15s; }
+.toc-footer button:hover { opacity: 0.85; }
+
+/* End Overlay */
+#end-overlay { display: none; position: fixed; inset: 0; z-index: 150; align-items: center; justify-content: center; flex-direction: column; gap: 1.2rem; background: rgba(250,248,246,0.88); backdrop-filter: blur(20px); }
+body.dark-mode #end-overlay { background: rgba(20,18,16,0.88); }
+#end-overlay.active { display: flex; }
+.end-title { font-family: 'Playfair Display', serif; font-size: 2.4rem; }
+</style>
+</head>
+<body>
+
+<button class="theme-toggle-btn" id="theme-toggle" title="Ganti Tema">🌙</button>
+<div class="mesh-bg"></div>
+
+<div id="app">
+  <!-- ── WELCOME ── -->
+  <div id="welcome-screen" class="screen active">
+    <div class="logo-mark">
+      <svg class="logo-svg" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="80" height="80" rx="14" fill="#1a1715"/>
+        <path d="M16,14 Q16,14 20,14 L34,14 Q36,14 36,16 L36,46 Q36,66 20,62 L16,60 Q14,59 14,57 L14,16 Q14,14 16,14 Z" fill="white"/>
+        <path d="M44,18 Q44,14 48,14 L62,14 Q66,14 66,18 L66,62 Q66,66 62,66 L46,66 Q44,66 44,64 L44,40 Q52,30 44,18 Z" fill="white"/>
+      </svg>
+      <span class="logo-wordmark">nexta</span>
+    </div>
+    <h1 class="welcome-headline">Baca dengan<br><em>tenang</em>, satu<br>kalimat.</h1>
+    <p class="welcome-sub">Unggah buku, artikel, atau PDF Anda — Nexta menyajikannya satu kalimat per satu, lengkap dengan gambar &amp; daftar isi.</p>
+    <div style="display:flex; flex-direction:column; gap:0.8rem; align-items:center;">
+      <button class="btn-pill btn-primary" id="btn-to-upload">→ Mulai baca baru</button>
+      <button class="btn-pill btn-ghost" id="btn-resume" style="display:none;">↺ Lanjutkan bacaan terakhir</button>
+    </div>
+  </div>
+
+  <!-- ── UPLOAD ── -->
+  <div id="upload-screen" class="screen">
+    <div class="card upload-card">
+      <h2 class="upload-title">Pilih sumber bacaan</h2>
+      <div class="drop-zone" id="drop-zone">
+        <input type="file" id="file-input" accept=".txt,.epub,application/pdf,text/plain">
+        <div class="drop-icon">📄</div>
+        <div class="drop-label"><strong>Ketuk untuk unggah</strong><br>atau seret file ke sini</div>
+        <div class="file-tags">
+          <span class="file-tag">PDF</span><span class="file-tag">EPUB</span><span class="file-tag">TXT</span>
+        </div>
+      </div>
+      <div class="file-loaded-name" id="file-loaded-name"></div>
+
+      <div class="divider-row">atau tempel teks</div>
+      <textarea id="paste-input" placeholder="Tempel teks Anda di sini…" rows="4"></textarea>
+
+      <div class="loading-bar" id="loading-bar"><div class="loading-bar-fill"></div></div>
+      <div class="loading-label" id="loading-label">Membaca dokumen…</div>
+
+      <div class="mode-row">
+        <span class="mode-label">Mode tampilan</span>
+        <select id="mode-select">
+          <option value="sentence">Per kalimat</option>
+          <option value="words">Per jumlah kata</option>
+          <option value="smart">✦ Baca Pintar</option>
+        </select>
+      </div>
+
+      <div class="word-count-row" id="word-count-row">
+        <span class="mode-label">Jumlah kata per potongan</span>
+        <div style="display:flex;align-items:center;gap:0.7rem;">
+          <input type="range" id="word-count-input" min="1" max="20" value="5">
+          <span class="range-val" id="word-count-val">5 kata</span>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-pill btn-ghost" id="btn-back-welcome">← Kembali</button>
+        <button class="btn-pill btn-primary" id="btn-start" disabled>Mulai →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── READER ── -->
+  <div id="reader-screen" class="screen">
+    <div class="reader-progress"><div class="reader-progress-fill" id="progress-fill"></div></div>
+    <div class="reader-topbar">
+      <button class="btn-toc" id="btn-open-toc" title="Daftar Isi">☰</button>
+      <span class="topbar-sep">·</span>
+      <span class="topbar-logo">Nexta</span>
+      <span class="topbar-sep">·</span>
+      <span class="topbar-counter" id="topbar-counter">1 / 1</span>
+      <span class="topbar-sep">·</span>
+      <span class="topbar-estimate" id="time-estimate">~0 mnt</span>
+    </div>
+
+    <div class="reader-stage" id="reader-stage">
+      <div class="lyrics-scroll" id="lyrics-scroll">
+        <!-- filled dynamically -->
+      </div>
+      <img class="chunk-image" id="chunk-img" alt="Ilustrasi">
+      <div class="translate-panel" id="translate-panel">
+        <div class="translate-label">🌐 Terjemahan · <em>Bahasa Indonesia</em></div>
+        <div class="translate-text" id="translate-text"></div>
+      </div>
+    </div>
+
+    <div class="reader-bottom">
+      <div class="ctrl-row">
+        <button class="ctrl-icon-btn" id="btn-font-dec" style="font-family:serif;" title="Perkecil">A−</button>
+        <button class="ctrl-icon-btn" id="btn-prev" title="Sebelumnya">←</button>
+        <button class="ctrl-play-btn" id="btn-play">▶</button>
+        <button class="ctrl-icon-btn" id="btn-next" title="Berikutnya">→</button>
+        <button class="ctrl-icon-btn" id="btn-font-inc" style="font-family:serif;" title="Perbesar">A+</button>
+      </div>
+      <div class="ctrl-row">
+        <button class="ctrl-icon-btn" id="btn-font-toggle" title="Ganti Jenis Font" style="font-size:0.7rem;width:auto;padding:0 0.9rem;border-radius:999px;">Serif</button>
+        <button class="btn-translate-ctrl" id="btn-translate">🌐 Terjemahkan</button>
+      </div>
+      <div class="speed-row">
+        <span>Lambat</span>
+        <input type="range" id="speed-range" min="1" max="10" value="5">
+        <span>Cepat</span>
+      </div>
+      <div class="ctrl-row">
+        <button class="btn-pill btn-ghost" id="btn-back-reader" style="font-size:0.72rem;padding:0.5rem 1.2rem;">✕ Keluar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TOC SIDEBAR -->
+<div class="toc-overlay" id="toc-overlay"></div>
+<div class="toc-sidebar" id="toc-sidebar">
+  <div class="toc-header">
+    <div>
+      <div class="toc-title">Daftar Isi</div>
+      <div class="toc-subtitle" id="toc-subtitle">—</div>
+    </div>
+    <button class="btn-close-toc" id="btn-close-toc">✕</button>
+  </div>
+  <div class="toc-search-wrap">
+    <input type="text" id="toc-search" placeholder="Cari bab…">
+  </div>
+  <div class="toc-list" id="toc-list">
+    <div class="toc-empty">Daftar isi tidak tersedia</div>
+  </div>
+  <div class="toc-footer">
+    <label>Lompat ke bagian</label>
+    <input type="number" id="page-jump-input" min="1" placeholder="1">
+    <button id="btn-page-jump">Pergi</button>
+  </div>
+</div>
+
+<!-- END OVERLAY -->
+<div id="end-overlay">
+  <p class="end-title">Selesai ✦</p>
+  <div style="display:flex;gap:0.7rem;">
+    <button class="btn-pill btn-primary" id="btn-restart">Baca ulang</button>
+    <button class="btn-pill btn-ghost" id="btn-end-back">Kembali</button>
+  </div>
+</div>
+
+<script>
+const PDFJS_URL    = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+const PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// API KEY GEMINI ANDA
+const GEMINI_API_KEY = "AIzaSyB9uPDDH0KA2WnHZvYhHvwYxIbSjznh52s";
+
+let rawData = []; // raw items before chunking
+let rawToc = [];
+let chunks = [], tocData = [], current = 0, playing = false, timer = null;
+let pdfLib = null, chunkMode = 'sentence', wordsPerChunk = 5, baseFontSize = 2.4;
+let translateOn = false, lastTranslatedIdx = -1;
+let fontIsSerif = true; // serif default
+
+const S = id => document.getElementById(id);
+const screens = ['welcome-screen','upload-screen','reader-screen'];
+function showScreen(id) { screens.forEach(s => S(s).classList.remove('active')); S(id).classList.add('active'); }
+
+/* ── THEME ── */
+let isDark = localStorage.getItem('nexta_theme') === 'dark';
+if (isDark) { document.body.classList.add('dark-mode'); S('theme-toggle').textContent = '☀️'; }
+S('theme-toggle').addEventListener('click', () => {
+  document.body.classList.toggle('dark-mode');
+  isDark = document.body.classList.contains('dark-mode');
+  localStorage.setItem('nexta_theme', isDark ? 'dark' : 'light');
+  S('theme-toggle').textContent = isDark ? '☀️' : '🌙';
+});
+
+/* ── FONT SIZE ── */
+if (localStorage.getItem('nexta_fontsize')) baseFontSize = parseFloat(localStorage.getItem('nexta_fontsize'));
+function updateFont() {
+  // font size stored but lyrics CSS handles actual sizes via .active / .near classes
+  // we only adjust the CSS variable scale factor
+  document.documentElement.style.setProperty('--font-scale', baseFontSize / 2.4);
+  localStorage.setItem('nexta_fontsize', baseFontSize);
+}
+S('btn-font-inc').addEventListener('click', () => { baseFontSize = Math.min(5, baseFontSize + 0.2); updateFont(); });
+S('btn-font-dec').addEventListener('click', () => { baseFontSize = Math.max(1, baseFontSize - 0.2); updateFont(); });
+
+/* ── FONT TYPE TOGGLE ── */
+if (localStorage.getItem('nexta_fontstyle') === 'sans') { fontIsSerif = false; document.body.classList.add('font-sans'); S('btn-font-toggle') && (S('btn-font-toggle').textContent = 'Sans'); }
+S('btn-font-toggle').addEventListener('click', () => {
+  fontIsSerif = !fontIsSerif;
+  document.body.classList.toggle('font-sans', !fontIsSerif);
+  S('btn-font-toggle').textContent = fontIsSerif ? 'Serif' : 'Sans';
+  localStorage.setItem('nexta_fontstyle', fontIsSerif ? 'serif' : 'sans');
+  // re-apply font to all existing lyric lines
+  document.querySelectorAll('.lyric-text').forEach(el => {
+    el.style.fontFamily = fontIsSerif ? "'Playfair Display', serif" : "'DM Sans', sans-serif";
+  });
+});
+
+/* ── MODE SELECT ── */
+S('mode-select').addEventListener('change', () => {
+  chunkMode = S('mode-select').value;
+  S('word-count-row').classList.toggle('visible', chunkMode === 'words');
+});
+S('word-count-input').addEventListener('input', () => {
+  wordsPerChunk = parseInt(S('word-count-input').value);
+  S('word-count-val').textContent = wordsPerChunk + ' kata';
+});
+
+/* ══════════════════════════════════════════
+   SMART CHUNKING — mode-independent TOC
+══════════════════════════════════════════ */
+
+// Protected terms that must never be split across chunks
+// (abbreviations, common English/ID compound terms, etc.)
+const PROTECTED_TERMS = [
+  /[A-Z]{2,}(?:\.[A-Z]{2,})+/g,    // U.S.A, P.T.
+  /(?:^|\s)[A-Z]{2,6}(?=\s|$)/g,   // NASA, CEO, UU, PP, dll
+  /\d+[.,]\d+/g,                    // angka desimal
+  /[A-Za-z]+(?:-[A-Za-z]+)+/g,      // kata-kata
+  /(?:Pasal|Ayat|Bab|Bagian)\s+\d+/gi,
+];
+
+function hasProtectedTerm(words, start, end) {
+  const slice = words.slice(start, end).join(' ');
+  return PROTECTED_TERMS.some(re => { re.lastIndex = 0; return re.test(slice); });
+}
+
+// Split a single sentence into smart sub-chunks of max N words
+// Avoids breaking protected terms and ensures natural phrase boundaries
+function smartSplitSentence(sentence, maxWords = 8) {
+  const words = sentence.split(/\s+/).filter(Boolean);
+  if (words.length <= maxWords) return [sentence];
+
+  const parts = [];
+  let start = 0;
+
+  // Natural break punctuation (comma, semicolon, colon, dash)
+  const naturalBreaks = new Set();
+  let built = '';
+  for (let i = 0; i < words.length; i++) {
+    built += (i ? ' ' : '') + words[i];
+    if (/[,;:\u2014\u2013]$/.test(words[i])) naturalBreaks.add(i);
+  }
+
+  while (start < words.length) {
+    let end = Math.min(start + maxWords, words.length);
+
+    // Try to snap to a natural break within the window
+    let snapped = -1;
+    for (let b of naturalBreaks) {
+      if (b >= start && b < end) snapped = b + 1; // break after the comma/semicolon word
+    }
+    if (snapped > start) end = snapped;
+
+    // Avoid breaking a protected term that straddles the boundary
+    while (end > start + 1 && hasProtectedTerm(words, end - 1, end + 1)) end--;
+
+    parts.push(words.slice(start, end).join(' '));
+    start = end;
+  }
+  return parts.length ? parts : [sentence];
+}
+
+function cleanText(t) { return t.replace(/\r\n/g, '\n').replace(/[ \t]+/g, ' ').trim(); }
+
+// Core sentence tokenizer — used by ALL modes for consistency
+function tokenizeSentences(text) {
+  const cleaned = cleanText(text);
+  if (!cleaned) return [];
+  // Split on sentence-ending punctuation followed by space+uppercase or newline
+  // Uses lookbehind so delimiter stays with the sentence
+  const raw = cleaned.split(/(?<=[.!?…])\s+(?=[A-Z\u00C0-\u024F"'\d])/g);
+  return raw.map(s => s.trim()).filter(s => s.length > 2);
+}
+
+// ALWAYS build chunks from sentences first, then apply mode transformation
+// This guarantees TOC detection is mode-independent
+function splitToChunks(text, pageNum) {
+  const sentences = tokenizeSentences(text);
+  if (!sentences.length) return [];
+
+  if (chunkMode === 'words') {
+    const words = cleanText(text).split(/\s+/).filter(Boolean);
+    const out = [];
+    for (let i = 0; i < words.length; i += wordsPerChunk) {
+      const sl = words.slice(i, i + wordsPerChunk).join(' ');
+      if (sl.trim()) out.push({ text: sl, type: 'text', page: pageNum });
+    }
+    return out;
+  }
+
+  if (chunkMode === 'smart') {
+    const out = [];
+    for (const sent of sentences) {
+      const parts = smartSplitSentence(sent, 8);
+      parts.forEach(p => out.push({ text: p, type: 'text', page: pageNum }));
+    }
+    return out;
+  }
+
+  // default: sentence
+  return sentences.map(s => ({ text: s, type: 'text', page: pageNum }));
+}
+
+/* ── TOC BUILDING — always runs on sentences, mode-independent ── */
+function buildContentToc(allRawData) {
+  // Build a sentence-level list from rawData for consistent heading detection
+  const BAB_RE = /^(bab|chapter|bagian|part|section|pasal|artikel|unit|modul|topik)\s+[\dIVXivx]+/i;
+  const NUM_RE = /^[\dIVXivxA-Z]{1,4}[.\)]\s+\S/;
+  const SHORT_ALLCAPS = /^[A-Z\u00C0-\u024F\s]{4,60}$/;
+
+  // We map headings to chunk indices AFTER chunking is done
+  // Strategy: record heading texts with their rawData item index,
+  // then after building chunks, find the first chunk that contains that text
+  const headingCandidates = [];
+
+  // Pass 1: scan rawData for heading-like items
+  for (let ri = 0; ri < allRawData.length; ri++) {
+    const item = allRawData[ri];
+    if (item.type === 'heading') {
+      headingCandidates.push({ title: item.text, level: item.level, page: item.page, rawIdx: ri });
+      continue;
+    }
+    if (item.type !== 'raw_text') continue;
+
+    // Scan sentences of this item for heading-like lines
+    const sentences = tokenizeSentences(item.text);
+    for (let si = 0; si < sentences.length; si++) {
+      const txt = sentences[si].trim();
+      const len = txt.length;
+      const nextTxt = sentences[si + 1] || '';
+      const isBab = BAB_RE.test(txt);
+      const isNumHeading = NUM_RE.test(txt) && len <= 80;
+      const isAllCaps = SHORT_ALLCAPS.test(txt) && len >= 4 && len <= 60;
+      const isShortTitle = len <= 70 && !txt.endsWith('.') && !txt.endsWith(',') && !txt.endsWith(';') && !txt.endsWith(':') && len >= 10 && nextTxt.length > 80;
+
+      let level = 0;
+      if (isBab) level = 1;
+      else if (isAllCaps && nextTxt.length > 80) level = 1;
+      else if (isNumHeading && nextTxt.length > 80) level = 2;
+      else if (isShortTitle) level = 2;
+
+      if (level > 0) {
+        headingCandidates.push({ title: txt, level, page: item.page, rawIdx: ri });
+      }
+    }
+  }
+
+  // Deduplicate — same title within 2 raw items = same heading
+  const deduped = [];
+  for (const hc of headingCandidates) {
+    if (!deduped.length || deduped[deduped.length-1].title !== hc.title) {
+      deduped.push(hc);
+    }
+  }
+
+  return deduped; // will be resolved to chunkIdx after chunking
+}
+
+function resolveTocToChunks(headings, builtChunks) {
+  return headings.map(h => {
+    // Find the chunk whose text exactly matches or starts with the heading title
+    let idx = builtChunks.findIndex(c => c.type === 'text' && (c.text === h.title || c.text.startsWith(h.title.slice(0, 30))));
+    if (idx === -1) {
+      // Fallback: find by page
+      idx = builtChunks.findIndex(c => c.page >= h.page);
+    }
+    return { title: h.title, level: h.level, chunkIdx: Math.max(0, idx) };
+  }).filter((h, i, arr) => i === 0 || arr[i-1].chunkIdx !== h.chunkIdx); // remove dups
+}
+
+/* ── TOC RENDER ── */
+function renderToc() {
+  const list = S('toc-list'); list.innerHTML = '';
+  if (!tocData.length) {
+    list.innerHTML = '<div class="toc-empty">📋 Tidak ada bab yang terdeteksi.<br><br>Gunakan "Lompat ke bagian" di bawah untuk navigasi langsung.</div>';
+    S('toc-subtitle').textContent = 'Tidak ada bab'; return;
+  }
+  S('toc-subtitle').textContent = tocData.length + ' bab ditemukan'; drawTocItems(tocData);
+}
+
+function drawTocItems(items) {
+  const list = S('toc-list'); list.innerHTML = '';
+  items.forEach((item, i) => {
+    const btn = document.createElement('button'); btn.className = 'toc-item';
+    if (item.level > 1) btn.style.paddingLeft = (0.8 + (item.level - 1) * 0.75) + 'rem';
+    const isSubchapter = item.level > 1;
+    btn.innerHTML = `<span class="toc-num" style="${isSubchapter?'opacity:0.5':''}">${isSubchapter?'›':i+1}</span><span class="toc-item-body" style="${isSubchapter?'font-size:0.77rem':''}">${escHtml(item.title)}</span>`;
+    btn.onclick = () => { stopPlay(); playing = false; S('btn-play').textContent = '▶'; current = item.chunkIdx; renderChunk(current, true); closeToc(); };
+    list.appendChild(btn);
+  });
+}
+function escHtml(t) { return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function updateTocHighlight() {
+  if (!chunks.length || !tocData.length) return;
+  const items = S('toc-list').querySelectorAll('.toc-item'); items.forEach(el => el.classList.remove('active'));
+  let ai = -1; for (let i = 0; i < tocData.length; i++) { if (tocData[i].chunkIdx <= current) ai = i; else break; }
+  if (ai >= 0 && items[ai]) { items[ai].classList.add('active'); items[ai].scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+}
+S('toc-search').addEventListener('input', () => { const q = S('toc-search').value.toLowerCase().trim(); drawTocItems(q ? tocData.filter(t => t.title.toLowerCase().includes(q)) : tocData); });
+const openToc = () => { S('toc-sidebar').classList.add('active'); S('toc-overlay').classList.add('active'); S('toc-search').value = ''; drawTocItems(tocData); updateTocHighlight(); stopPlay(); playing = false; S('btn-play').textContent = '▶'; };
+const closeToc = () => { S('toc-sidebar').classList.remove('active'); S('toc-overlay').classList.remove('active'); };
+S('btn-open-toc').addEventListener('click', openToc); S('btn-close-toc').addEventListener('click', closeToc); S('toc-overlay').addEventListener('click', closeToc);
+
+S('btn-page-jump').onclick = () => {
+  const val = parseInt(S('page-jump-input').value); if (!val || val < 1) return;
+  const idx = Math.min(val - 1, chunks.length - 1);
+  stopPlay(); playing = false; S('btn-play').textContent = '▶'; current = idx; renderChunk(current, true); closeToc();
+};
+S('page-jump-input').addEventListener('keydown', e => { if (e.key === 'Enter') S('btn-page-jump').click(); });
+
+/* ══════════════════════════════════════════
+   LYRICS SCROLL RENDER
+══════════════════════════════════════════ */
+let lyricsBuilt = false;
+
+function buildLyricsDOM() {
+  const container = S('lyrics-scroll');
+  container.innerHTML = '';
+  chunks.forEach((ch, i) => {
+    const line = document.createElement('div');
+    line.className = 'lyric-line';
+    line.dataset.idx = i;
+
+    if (ch.type === 'image') {
+      line.classList.add('image-line');
+      const img = document.createElement('img');
+      img.src = ch.src; img.alt = 'Ilustrasi';
+      img.style.maxWidth = 'min(90%,500px)'; img.style.borderRadius = '12px';
+      line.appendChild(img);
+    } else {
+      const span = document.createElement('span');
+      span.className = 'lyric-text';
+      span.textContent = ch.text;
+      if (!fontIsSerif) span.style.fontFamily = "'DM Sans', sans-serif";
+      line.appendChild(span);
+    }
+
+    line.addEventListener('click', () => {
+      stopPlay(); playing = false; S('btn-play').textContent = '▶';
+      current = i; updateLyricsHighlight(i, false);
+      updateTocHighlight();
+      S('topbar-counter').textContent = `${i+1} / ${chunks.length}`;
+      S('progress-fill').style.width = ((i+1)/chunks.length*100)+'%';
+      const rem = chunks.length - i - 1;
+      S('time-estimate').textContent = rem <= 0 ? 'Selesai' : `~${Math.ceil(rem*getDelay()/60000)} mnt`;
+      if (lastTranslatedIdx !== i) { translateOn = false; S('btn-translate').classList.remove('on'); S('translate-panel').classList.remove('visible'); }
+      try { localStorage.setItem('nexta_state', JSON.stringify({chunks, toc: tocData, current: i})); } catch(e) {}
+    });
+
+    container.appendChild(line);
+  });
+  lyricsBuilt = true;
+}
+
+function updateLyricsHighlight(idx, smooth = true) {
+  const lines = S('lyrics-scroll').querySelectorAll('.lyric-line');
+  lines.forEach((line, i) => {
+    line.classList.remove('active','near');
+    const diff = Math.abs(i - idx);
+    if (diff === 0) line.classList.add('active');
+    else if (diff <= 2) line.classList.add('near');
+  });
+  // Scroll active line to center
+  if (lines[idx]) {
+    lines[idx].scrollIntoView({ behavior: smooth ? 'smooth' : 'instant', block: 'center' });
+  }
+}
+
+function renderChunk(idx, skipAnim = false) {
+  const ch = chunks[idx]; if (!ch) return;
+  const panel = S('translate-panel');
+  if (lastTranslatedIdx !== idx) { translateOn = false; S('btn-translate').classList.remove('on'); panel.classList.remove('visible'); }
+
+  // Show/hide image overlay (for image-only chunks in old view — now handled by lyrics)
+  S('chunk-img').style.display = 'none';
+
+  updateLyricsHighlight(idx, !skipAnim);
+
+  S('topbar-counter').textContent = `${idx+1} / ${chunks.length}`;
+  S('progress-fill').style.width = ((idx+1)/chunks.length*100)+'%';
+  const rem = chunks.length - idx - 1;
+  S('time-estimate').textContent = rem <= 0 ? 'Selesai' : `~${Math.ceil(rem*getDelay()/60000)} mnt`;
+  updateTocHighlight();
+  try { localStorage.setItem('nexta_state', JSON.stringify({chunks, toc: tocData, current: idx})); S('btn-resume').style.display = 'inline-flex'; } catch(e) {}
+}
+
+function loadScript(src) {
+  return new Promise((res, rej) => {
+    if (document.querySelector(`script[src="${src}"]`)) return res();
+    const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s);
+  });
+}
+
+/* ── PDF EXTRACTOR (Hanya ambil data mentah & gambar) ── */
+async function extractPdf(file) {
+  if (!pdfLib) {
+    await loadScript(PDFJS_URL); pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER; pdfLib = pdfjsLib;
+  }
+  const pdf = await pdfLib.getDocument({ data: await file.arrayBuffer() }).promise;
+  const tempRawData = [];
+  rawToc = [];
+  try {
+    const outline = await pdf.getOutline();
+    if (outline) {
+      for (let item of outline) {
+        let dest = typeof item.dest === 'string' ? await pdf.getDestination(item.dest) : item.dest;
+        if (dest) { let pageIdx = await pdf.getPageIndex(dest[0]); rawToc.push({ title: item.title, page: pageIdx + 1, level: 1 }); }
+      }
+    }
+  } catch(e) {}
+
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p); const content = await page.getTextContent();
+    let pageText = ''; let prevY = null;
+    for (const item of content.items) {
+      if (item.str === undefined) continue;
+      if (prevY !== null && Math.abs(item.transform[5] - prevY) > 8) pageText += ' ';
+      pageText += item.str; prevY = item.transform[5];
+    }
+    if (pageText.trim()) tempRawData.push({ type: 'raw_text', text: pageText.trim(), page: p });
+
+    try {
+      const ops = await page.getOperatorList();
+      const hasImg = ops.fnArray.some(fn => fn === pdfLib.OPS.paintImageXObject || fn === pdfLib.OPS.paintJpegXObject || fn === pdfLib.OPS.paintInlineImageXObject);
+      if (hasImg && content.items.length < 30) {
+        const vp = page.getViewport({ scale: 1.5 }); const canvas = document.createElement('canvas'); canvas.width = vp.width; canvas.height = vp.height;
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+        tempRawData.push({ type: 'image', src: canvas.toDataURL('image/jpeg', 0.82), page: p });
+      }
+    } catch(e) {}
+  }
+  return tempRawData;
+}
+
+/* ── EPUB EXTRACTOR (Data mentah, header terpisah) ── */
+async function extractEpub(file) {
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+  const zip = await JSZip.loadAsync(await file.arrayBuffer());
+  let htmlFiles = []; const containerXml = await zip.files['META-INF/container.xml']?.async('string'); let opfPath = '';
+  if (containerXml) { const m = containerXml.match(/full-path="([^"]+\.opf)"/i); if (m) opfPath = m[1]; }
+  if (opfPath && zip.files[opfPath]) {
+    const opfContent = await zip.files[opfPath].async('string'); const opfDoc = new DOMParser().parseFromString(opfContent, 'text/xml');
+    const opfDir = opfPath.substring(0, opfPath.lastIndexOf('/') + 1); const idrefs = [...opfDoc.querySelectorAll('spine itemref')].map(el => el.getAttribute('idref'));
+    const manifest = {}; opfDoc.querySelectorAll('manifest item').forEach(el => { manifest[el.getAttribute('id')] = opfDir + el.getAttribute('href'); });
+    htmlFiles = idrefs.map(r => manifest[r]).filter(Boolean);
+  }
+  if (!htmlFiles.length) htmlFiles = Object.keys(zip.files).filter(n => n.match(/\.(html|htm|xhtml)$/i)).sort();
+
+  const tempRawData = [];
+  for (let fi = 0; fi < htmlFiles.length; fi++) {
+    const fn = htmlFiles[fi]; if (!zip.files[fn]) continue;
+    const doc = new DOMParser().parseFromString(await zip.files[fn].async('string'), 'text/html'); doc.querySelectorAll('script,style,nav').forEach(el => el.remove()); const pg = fi + 1;
+    const walker = document.createTreeWalker(doc.body || doc.documentElement, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walker.nextNode())) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const txt = node.textContent.trim(); if (txt.length > 10) tempRawData.push({ type: 'raw_text', text: txt, page: pg });
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        const tag = node.tagName?.toLowerCase();
+        if (/^h[1-3]$/.test(tag)) {
+          const headingTxt = node.textContent.trim(); if (headingTxt.length > 2 && headingTxt.length <= 120) tempRawData.push({ type: 'heading', text: headingTxt, level: parseInt(tag[1]), page: pg });
+        } else if (tag === 'img') {
+          const src = node.getAttribute('src') || '';
+          if (src) {
+            const base = src.split('/').pop().split('?')[0]; const match = Object.keys(zip.files).find(k => k.endsWith(base));
+            if (match) { try { const b64 = await zip.files[match].async('base64'); const ext = match.split('.').pop().toLowerCase().replace('jpg','jpeg'); tempRawData.push({ type: 'image', src: `data:image/${ext};base64,${b64}`, page: pg }); } catch(e) {} }
+          }
+        }
+      }
+    }
+  }
+  return tempRawData;
+}
+
+/* ── SMART TRANSLATE: AI Context-Aware + Fallback ── */
+async function doTranslate() {
+  const ch = chunks[current];
+  if (!ch || ch.type === 'image') return;
+
+  const panel = S('translate-panel');
+  const textEl = S('translate-text');
+  const btn = S('btn-translate');
+
+  // Toggle tutup panel jika di-klik dua kali pada chunk yang sama
+  if (translateOn && lastTranslatedIdx === current) {
+    translateOn = false; btn.classList.remove('on'); panel.classList.remove('visible'); return;
+  }
+
+  translateOn = true; btn.classList.add('on'); panel.classList.add('visible');
+  textEl.innerHTML = '<span class="translate-loading">⏳ AI sedang membaca konteks...</span>';
+
+  const currText = ch.text.trim();
+  
+  // AMBIL KONTEKS: 1 kalimat sebelumnya & 1 kalimat sesudahnya
+  const prevText = (current > 0 && chunks[current - 1].type === 'text') ? chunks[current - 1].text.trim() : "";
+  const nextText = (current + 1 < chunks.length && chunks[current + 1].type === 'text') ? chunks[current + 1].text.trim() : "";
+
+  // SKENARIO 1: Gunakan AI Gemini
+  if (GEMINI_API_KEY && GEMINI_API_KEY !== "MASUKKAN_API_KEY_ANDA_DI_SINI") {
+    try {
+      const prompt = `Kamu adalah penerjemah profesional. Terjemahkan teks utama ke dalam Bahasa Indonesia yang natural, mengalir, enak dibaca layaknya novel/artikel profesional, dan tidak kaku (jangan terjemahkan kata per kata).
+
+Konteks kalimat sebelumnya: "${prevText}"
+Konteks kalimat selanjutnya: "${nextText}"
+
+Teks utama yang HARUS diterjemahkan: "${currText}"
+
+Berikan HANYA hasil terjemahan dari teks utama, tanpa tanda kutip, tanpa penjelasan, dan tanpa mengulang konteks.`;
+
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.3 } 
+        })
+      });
+
+      const data = await response.json();
+      if (data.candidates && data.candidates.length > 0) {
+        textEl.textContent = data.candidates[0].content.parts[0].text.trim();
+        lastTranslatedIdx = current;
+        return; // Berhenti di sini jika AI berhasil
+      }
+    } catch (e) {
+      console.warn("Terjemahan AI gagal, mencoba fallback ke mode standar...", e);
+    }
+  }
+
+  // SKENARIO 2: Fallback (Jika koneksi AI gagal)
+  try {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=id&dt=t&q=${encodeURIComponent(currText)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    let result = '';
+    if (data && data[0]) { data[0].forEach(s => { if (s[0]) result += s[0]; }); }
+    if (result) { 
+      textEl.innerHTML = result + '<br><span style="font-size:0.65rem; color:var(--accent); font-style:normal;">(Fallback: Menggunakan mode standar tanpa konteks)</span>'; 
+      lastTranslatedIdx = current; 
+    } else { 
+      throw new Error('Kosong'); 
+    }
+  } catch(e) {
+    textEl.innerHTML = `<span style="color:var(--danger);font-size:0.8rem;font-style:normal;">⚠️ Gagal menerjemahkan. Periksa koneksi internet Anda.</span>`;
+  }
+}
+S('btn-translate').addEventListener('click', doTranslate);
+
+/* ── FILE INPUT ── */
+S('file-input').addEventListener('change', async () => {
+  const file = S('file-input').files[0]; if (!file) return;
+  S('loading-bar').classList.add('active'); S('loading-label').classList.add('active');
+  S('btn-start').disabled = true; S('paste-input').value = '';
+  
+  try {
+    const name = file.name.toLowerCase(); rawToc = [];
+    if (name.endsWith('.pdf')) rawData = await extractPdf(file);
+    else if (name.endsWith('.epub')) rawData = await extractEpub(file);
+    else { rawData = [{ type: 'raw_text', text: await file.text(), page: 1 }]; }
+    
+    S('file-loaded-name').textContent = `✓ ${file.name} berhasil dimuat. (Pilih opsi lalu klik Mulai)`;
+    S('file-loaded-name').classList.add('visible');
+    S('btn-start').disabled = false;
+  } catch(e) { alert('Gagal memproses file: ' + e.message); console.error(e); }
+  S('loading-bar').classList.remove('active'); S('loading-label').classList.remove('active');
+});
+
+const dz = S('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.style.borderColor = 'var(--accent)'; });
+dz.addEventListener('dragleave', () => { dz.style.borderColor = ''; });
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.style.borderColor = '';
+  const f = e.dataTransfer?.files[0]; if (!f) return;
+  const dt = new DataTransfer(); dt.items.add(f);
+  S('file-input').files = dt.files; S('file-input').dispatchEvent(new Event('change'));
+});
+S('paste-input').addEventListener('input', () => { if (S('paste-input').value.trim().length > 5) S('btn-start').disabled = false; });
+
+/* ── NAV BUTTONS ── */
+S('btn-to-upload').onclick = () => { rawData = []; chunks = []; showScreen('upload-screen'); };
+S('btn-back-welcome').onclick = () => showScreen('welcome-screen');
+S('btn-back-reader').onclick = () => { stopPlay(); showScreen('upload-screen'); };
+S('btn-restart').onclick = () => { S('end-overlay').classList.remove('active'); current = 0; renderChunk(current, true); };
+S('btn-end-back').onclick = () => { S('end-overlay').classList.remove('active'); showScreen('upload-screen'); };
+
+/* ── START PROSES CHUNKING DINAMIS ── */
+S('btn-start').addEventListener('click', () => {
+  chunkMode = S('mode-select').value; wordsPerChunk = parseInt(S('word-count-input').value) || 5;
+  
+  if (rawData.length === 0) {
+    const txt = S('paste-input').value.trim(); if (!txt) return;
+    rawData = [{ type: 'raw_text', text: txt, page: 1 }]; rawToc = [];
+  }
+
+  // Build chunks
+  chunks = [];
+  for (let item of rawData) {
+    if (item.type === 'raw_text') chunks.push(...splitToChunks(item.text, item.page));
+    else if (item.type === 'heading') { chunks.push({ type: 'text', text: item.text, page: item.page }); }
+    else chunks.push(item); // images
+  }
+  if (!chunks.length) return;
+
+  // TOC Resolution — always mode-independent using rawData scan
+  if (rawToc.length > 0) {
+    // PDF outline: resolve page numbers to chunk indices
+    tocData = rawToc.map(t => {
+      let idx = chunks.findIndex(c => c.page >= t.page);
+      return { ...t, chunkIdx: idx !== -1 ? idx : 0 };
+    });
+  } else {
+    // Heuristic: scan rawData for headings, then resolve to chunks
+    const headings = buildContentToc(rawData);
+    tocData = resolveTocToChunks(headings, chunks);
+    // Also pick up EPUB headings that were in rawData as type:'heading'
+    const epubHeadings = rawData
+      .map((item, ri) => item.type === 'heading' ? { title: item.text, level: item.level, page: item.page, rawIdx: ri } : null)
+      .filter(Boolean);
+    if (epubHeadings.length > 0) {
+      const epubToc = resolveTocToChunks(epubHeadings, chunks);
+      // Merge: prefer EPUB headings but keep heuristic ones that aren't duplicates
+      const merged = [...epubToc];
+      for (const h of tocData) {
+        if (!merged.some(m => m.chunkIdx === h.chunkIdx)) merged.push(h);
+      }
+      tocData = merged.sort((a,b) => a.chunkIdx - b.chunkIdx);
+    }
+  }
+
+  current = 0; translateOn = false; lastTranslatedIdx = -1;
+  lyricsBuilt = false;
+  showScreen('reader-screen');
+  updateFont();
+  buildLyricsDOM();
+  renderToc();
+  S('page-jump-input').max = chunks.length; S('page-jump-input').placeholder = '1–' + chunks.length;
+  renderChunk(0, true);
+});
+
+/* ── RESUME ── */
+if (localStorage.getItem('nexta_state')) S('btn-resume').style.display = 'inline-flex';
+S('btn-resume').addEventListener('click', () => {
+  try {
+    const st = JSON.parse(localStorage.getItem('nexta_state'));
+    chunks = st.chunks; tocData = st.toc; current = st.current;
+    lyricsBuilt = false;
+    showScreen('reader-screen'); updateFont(); buildLyricsDOM(); renderToc(); renderChunk(current, true);
+    S('page-jump-input').max = chunks.length;
+  } catch(e) { localStorage.removeItem('nexta_state'); }
+});
+
+/* ── PLAYBACK ── */
+function getDelay() { return Math.round(8500 - (parseInt(S('speed-range').value) - 1) * 750); }
+
+function advance(dir) { stopPlay(); playing = false; S('btn-play').textContent = '▶'; const n = current + dir; if (n >= 0 && n < chunks.length) { current = n; renderChunk(current); } }
+S('btn-prev').onclick = () => advance(-1); S('btn-next').onclick = () => advance(1);
+S('btn-play').onclick = () => { playing = !playing; S('btn-play').textContent = playing ? '⏸' : '▶'; playing ? schedule() : stopPlay(); };
+S('speed-range').oninput = () => { const r = chunks.length - current - 1; S('time-estimate').textContent = r <= 0 ? 'Selesai' : `~${Math.ceil(r*getDelay()/60000)} mnt`; };
+
+function schedule() {
+  stopPlay(); if (!playing) return;
+  timer = setTimeout(() => {
+    if (current + 1 >= chunks.length) { stopPlay(); playing = false; S('btn-play').textContent = '▶'; S('end-overlay').classList.add('active'); return; }
+    current++; renderChunk(current); schedule();
+  }, getDelay());
+}
+function stopPlay() { if (timer) { clearTimeout(timer); timer = null; } }
+
+document.addEventListener('keydown', e => {
+  if (!S('reader-screen').classList.contains('active')) return;
+  if (S('toc-overlay').classList.contains('active')) { if (e.key === 'Escape') closeToc(); return; }
+  if (e.key === 'ArrowRight') advance(1);
+  if (e.key === 'ArrowLeft') advance(-1);
+  if (e.key === ' ') { e.preventDefault(); S('btn-play').click(); }
+  if (e.key === 't' || e.key === 'T') doTranslate();
+});
+</script>
+</body>
+</html>
