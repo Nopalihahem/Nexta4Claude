@@ -535,31 +535,103 @@ function tokenizeSentences(text) {
 
 // ALWAYS build chunks from sentences first, then apply mode transformation
 // This guarantees TOC detection is mode-independent
+// Fungsi bantuan untuk memaksakan pemotongan jika kalimat sangat panjang tanpa jeda
+function forceSplit(text, maxWords) {
+  const words = text.trim().split(/\s+/);
+  const result = [];
+  for (let i = 0; i < words.length; i += maxWords) {
+    result.push(words.slice(i, i + maxWords).join(' '));
+  }
+  return result;
+}
+
 function splitToChunks(text, pageNum) {
-  const sentences = tokenizeSentences(text);
-  if (!sentences.length) return [];
+  // Pastikan function cleanText sudah ada di kode Anda sebelumnya
+  const cleaned = cleanText(text);
+  if (!cleaned) return [];
+  
+  let subChunks = [];
+  
+  // 1. Regex pelindung singkatan agar tidak dipotong sebagai akhir kalimat
+  const abbrRegex = /(?:Mr|Ms|Mrs|Dr|Prof|Rev|Capt|St|Inc|Ltd|Jr|Sr|Co|vs|etc|PT|CV|dsbg|dll|dst|hlm|no|vol|ed|al)\.$/i;
+  
+  // Pisahkan ke kalimat dasar terlebih dahulu
+  const sents = cleaned.split(/(?<=[.!?…])\s+(?=[A-Z0-9\u00C0-\u024F"'])/g);
+  let mergedSents = [];
+  for (let i = 0; i < sents.length; i++) {
+    let s = sents[i].trim();
+    if (abbrRegex.test(s) && i + 1 < sents.length) {
+      sents[i+1] = s + " " + sents[i+1]; // Gabungkan singkatan yang terputus
+    } else {
+      if (s.length > 2) mergedSents.push(s);
+    }
+  }
 
+  // 2. Terapkan Mode Pembacaan
   if (chunkMode === 'words') {
-    const words = cleanText(text).split(/\s+/).filter(Boolean);
-    const out = [];
-    for (let i = 0; i < words.length; i += wordsPerChunk) {
-      const sl = words.slice(i, i + wordsPerChunk).join(' ');
-      if (sl.trim()) out.push({ text: sl, type: 'text', page: pageNum });
-    }
-    return out;
-  }
+    mergedSents.forEach(s => {
+      const words = s.split(/\s+/).filter(Boolean);
+      for(let i = 0; i < words.length; i += wordsPerChunk) {
+        subChunks.push({ text: words.slice(i, i + wordsPerChunk).join(' '), type: 'text', page: pageNum });
+      }
+    });
+  } 
+  else if (chunkMode === 'smart') {
+    // Regex Smart Chunking: Mendeteksi kata hubung ID & EN dan tanda baca pemisah utama
+    const smartSplitRegex = /(; |: | — | - |, yang |, dan |, atau |, and |, or | karena | sehingga | walaupun | meskipun | bahwa | sedangkan | whereas | although | because | which | who | whom | whose | however | therefore )/ig;
+    const maxWords = 10;
 
-  if (chunkMode === 'smart') {
-    const out = [];
-    for (const sent of sentences) {
-      const parts = smartSplitSentence(sent, 8);
-      parts.forEach(p => out.push({ text: p, type: 'text', page: pageNum }));
-    }
-    return out;
-  }
+    mergedSents.forEach(s => {
+      const hasQuotes = /["'“”‘’]/.test(s);
+      const wordCount = s.split(/\s+/).length;
 
-  // default: sentence
-  return sentences.map(s => ({ text: s, type: 'text', page: pageNum }));
+      // Prioritas 1: Lindungi Dialog dan Kalimat Pendek
+      if (wordCount <= maxWords || hasQuotes) {
+        if (wordCount > 15) {
+          forceSplit(s, maxWords).forEach(frag => subChunks.push({ text: frag, type: 'text', page: pageNum }));
+        } else {
+          subChunks.push({ text: s, type: 'text', page: pageNum });
+        }
+      } 
+      // Prioritas 2: Pemotongan Semantik (Klausa)
+      else {
+        let fragments = s.split(smartSplitRegex);
+        let currentFrag = "";
+
+        for (let i = 0; i < fragments.length; i++) {
+          if (!fragments[i]) continue;
+
+          // Jika ini adalah delimiter/kata hubung, tempelkan ke AWAL fragmen berikutnya
+          if (i % 2 !== 0) {
+            currentFrag += fragments[i];
+            continue;
+          }
+
+          currentFrag += fragments[i];
+          let currentWordCount = currentFrag.trim().split(/\s+/).length;
+
+          if (i === fragments.length - 1) {
+            if (currentFrag.trim().length > 0) {
+              if (currentWordCount > maxWords + 3) {
+                forceSplit(currentFrag, maxWords).forEach(frag => subChunks.push({ text: frag, type: 'text', page: pageNum }));
+              } else {
+                subChunks.push({ text: currentFrag.trim(), type: 'text', page: pageNum });
+              }
+            }
+          } else if (currentWordCount >= 4) {
+            subChunks.push({ text: currentFrag.trim(), type: 'text', page: pageNum });
+            currentFrag = "";
+          }
+        }
+      }
+    });
+  } 
+  else {
+    // Mode 'sentence' murni
+    mergedSents.forEach(s => subChunks.push({ text: s, type: 'text', page: pageNum }));
+  }
+  
+  return subChunks;
 }
 
 /* ── TOC BUILDING — always runs on sentences, mode-independent ── */
